@@ -32,7 +32,8 @@ apply plugin: 'idea'
 apply plugin: 'com.palantir.jacoco-full-report'
 apply plugin: 'jacoco'
 apply from: "${rootDir}/publishSonatype.gradle"
-
+apply plugin: 'maven'
+apply plugin: 'maven-publish'
 
 allprojects {
     repositories {
@@ -57,12 +58,17 @@ subprojects {
         }
     }
 
-
     dependencies {
         ["annotationProcessor", "testAnnotationProcessor", "compileOnly", "testCompileOnly"].each { conf ->
             add(conf, "org.projectlombok:lombok:1.18.12")
         }
    }
+
+    task sourcesJar(type: Jar) {
+        from sourceSets.main.allJava
+        classifier = 'sources'
+    }
+
 
 }
 

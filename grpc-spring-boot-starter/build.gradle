@@ -42,6 +42,34 @@ nexusPublishing {
 }
 
 publishing {
+    repositories {
+        maven {
+            // change to point to your repo, e.g. http://my.org/repo
+            url "https://codingcorp-maven.pkg.coding.net/repository/registry/maven-releases/"
+            credentials {
+                username = System.getenv('REGISTRY_USER') != null ? System.getenv('REGISTRY_USER') : 'dt_uQFZxOtEdV'
+                password = System.getenv('REGISTRY_PASSWORD') != null ? System.getenv('REGISTRY_PASSWORD') : 'nDZT7n47irtOEkOSj5ps2hhocFwcaP'
+            }
+        }
+    }
+    publications {
+        maven(MavenPublication) {
+            def result = System.getenv('VERSION_TAG')
+            if (result == null) {
+                result = new Date().toInstant().toEpochMilli()
+            }
+            project.setVersion(String.valueOf(result).trim())
+            groupId = 'io.github.lognet'
+            version = project.version
+            artifactId = 'grpc-spring-boot-starter'
+            from components.java
+            artifact sourcesJar
+        }
+    }
+}
+
+
+/*publishing {
     publications {
         mavenJava(MavenPublication) {
             pom{
@@ -84,7 +112,7 @@ publishing {
             }
         }
     }
-}
+}*/
 
 signing {
     required {
