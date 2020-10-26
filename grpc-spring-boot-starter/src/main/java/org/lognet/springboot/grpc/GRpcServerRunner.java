@@ -23,6 +23,8 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -51,11 +53,36 @@ public class GRpcServerRunner implements CommandLineRunner, DisposableBean {
 
     private final CountDownLatch latch;
 
+    private final AtomicBoolean shutdown = new AtomicBoolean(false);
+
     public GRpcServerRunner(Consumer<ServerBuilder<?>> configurator, ServerBuilder<?> serverBuilder) {
+        this(configurator, serverBuilder, true);
+    }
+
+    /**
+     *
+     * @param configurator
+     * @param serverBuilder
+     * @param directShutdownHook 直接往 Runtime 注册 shutdownHook
+     */
+    public GRpcServerRunner(Consumer<ServerBuilder<?>> configurator, ServerBuilder<?> serverBuilder, boolean directShutdownHook) {
         this.configurator = configurator;
         this.serverBuilder = serverBuilder;
         this.latch = new CountDownLatch(1);
+        if (directShutdownHook) {
+            Thread grpcShutdownHook = new Thread(() -> {
+                try {
+                    this.destroy();
+                } catch (Exception e) {
+                    log.error("", e);
+                }
+            });
+            grpcShutdownHook.setName("grpc-shutdown-hook-thread");
+            grpcShutdownHook.setDaemon(false);
+            Runtime.getRuntime().addShutdownHook(grpcShutdownHook);
+        }
     }
+
 
     @Override
     public void run(String... args) throws Exception {
@@ -147,7 +174,9 @@ public class GRpcServerRunner implements CommandLineRunner, DisposableBean {
 
     @Override
     public void destroy() throws Exception {
-
+        if(!shutdown.compareAndSet(false, true)) {
+            return;
+        }
         Optional.ofNullable(server).ifPresent(s->{
             log.info("Shutting down gRPC server ...");
             s.getServices().forEach(def->healthStatusManager.clearStatus(def.getServiceDescriptor().getName()));
@@ -167,7 +196,6 @@ public class GRpcServerRunner implements CommandLineRunner, DisposableBean {
             }
             log.info("gRPC server stopped.");
         });
-
     }
 
     private <T> Stream<String> getBeanNamesByTypeWithAnnotation(Class<? extends Annotation> annotationType, Class<T> beanType) throws Exception {

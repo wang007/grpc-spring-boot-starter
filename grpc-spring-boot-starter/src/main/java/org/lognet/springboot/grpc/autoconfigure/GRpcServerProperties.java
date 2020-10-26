@@ -54,6 +54,14 @@ public class GRpcServerProperties {
      */
     private int shutdownGrace = 0;
 
+    /**
+     * direct register to {@link Runtime#addShutdownHook(Thread)}, in order to exec gprc shutdown hook
+     *
+     */
+    private boolean directShutdownHook = true;
+
+
+
     public Integer getRunningPort() {
         if (null == runningPort) {
             synchronized (this) {
